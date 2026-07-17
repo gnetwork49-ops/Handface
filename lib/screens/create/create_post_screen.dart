@@ -14,16 +14,22 @@ class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
 
   @override
-  State<CreatePostScreen> createState() => _CreatePostScreenState();
+  State<CreatePostScreen> createState() =>
+      _CreatePostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> {
+class _CreatePostScreenState
+    extends State<CreatePostScreen> {
   final TextEditingController _captionController =
       TextEditingController();
 
-  final PostService _postService = PostService();
-  final StorageService _storageService = StorageService();
   final ImagePicker _picker = ImagePicker();
+
+  final StorageService _storageService =
+      StorageService();
+
+  final PostService _postService =
+      PostService();
 
   XFile? _selectedImage;
   XFile? _selectedVideo;
@@ -40,76 +46,91 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     _videoController?.dispose();
     super.dispose();
   }
-Future<void> _pickImage() async {
-  final XFile? image = await _picker.pickImage(
-    source: ImageSource.gallery,
-    imageQuality: 80,
-  );
 
-  if (image == null) return;
+  //----------------------------------
+  // PICK IMAGE
+  //----------------------------------
 
-  final bytes = await image.readAsBytes();
+  Future<void> _pickImage() async {
+    final image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+    );
 
-  _videoController?.dispose();
+    if (image == null) return;
 
-  setState(() {
-    _selectedImage = image;
-    _selectedVideo = null;
-    _imageBytes = bytes;
-    _videoController = null;
-  });
-}
-Future<void> _pickVideo() async {
-  try {
-    XFile? pickedVideo;
-
-    if (kIsWeb) {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.video,
-        withData: true,
-      );
-
-      if (result == null) return;
-
-      pickedVideo = XFile.fromData(
-        result.files.first.bytes!,
-        name: result.files.first.name,
-      );
-
-      print("Selected video: ${result.files.first.name}");
-    } else {
-      pickedVideo = await _picker.pickVideo(
-        source: ImageSource.gallery,
-      );
-
-      if (pickedVideo == null) return;
-    }
-
-    _selectedImage = null;
-    _imageBytes = null;
+    final bytes = await image.readAsBytes();
 
     _videoController?.dispose();
 
-    // Preview only on Android/iOS
-    if (!kIsWeb) {
-      _videoController = VideoPlayerController.file(
-        File(pickedVideo.path),
-      );
-
-      await _videoController!.initialize();
-
-      _videoController!
-        ..setLooping(true)
-        ..play();
-    }
-
     setState(() {
-      _selectedVideo = pickedVideo;
+      _selectedImage = image;
+      _selectedVideo = null;
+      _imageBytes = bytes;
+      _videoController = null;
     });
-  } catch (e) {
-    debugPrint("Video picker error: $e");
   }
-}
+
+  //----------------------------------
+  // PICK VIDEO
+  //----------------------------------
+
+  Future<void> _pickVideo() async {
+    try {
+      XFile? pickedVideo;
+
+      if (kIsWeb) {
+        final result =
+            await FilePicker.platform.pickFiles(
+          type: FileType.video,
+          withData: true,
+        );
+
+        if (result == null) return;
+
+        pickedVideo = XFile.fromData(
+          result.files.first.bytes!,
+          name: result.files.first.name,
+          mimeType: "video/mp4",
+        );
+
+        print("VIDEO SELECTED");
+        print(result.files.first.name);
+
+        _videoController = null;
+      } else {
+        pickedVideo = await _picker.pickVideo(
+          source: ImageSource.gallery,
+        );
+
+        if (pickedVideo == null) return;
+
+        _videoController?.dispose();
+
+        _videoController =
+            VideoPlayerController.file(
+          File(pickedVideo.path),
+        );
+
+        await _videoController!.initialize();
+
+        _videoController!
+          ..play()
+          ..setLooping(true);
+      }
+
+      setState(() {
+        _selectedVideo = pickedVideo;
+        _selectedImage = null;
+        _imageBytes = null;
+      });
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+  //----------------------------------
+// PUBLISH POST
+//----------------------------------
 
 Future<void> _publishPost() async {
   if (_captionController.text.trim().isEmpty &&
@@ -117,7 +138,9 @@ Future<void> _publishPost() async {
       _selectedVideo == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Please add a caption, image or video."),
+        content: Text(
+          "Please add a caption, image or video.",
+        ),
       ),
     );
     return;
@@ -140,7 +163,7 @@ Future<void> _publishPost() async {
         _selectedImage!,
       );
 
-      print("Image uploaded successfully.");
+      print("Image uploaded.");
       print(imageUrl);
     }
 
@@ -151,11 +174,11 @@ Future<void> _publishPost() async {
         _selectedVideo!,
       );
 
-      print("Video uploaded successfully.");
+      print("Video uploaded.");
       print(videoUrl);
     }
 
-    print("Saving post to database...");
+    print("Saving post...");
 
     await _postService.createPost(
       caption: _captionController.text.trim(),
@@ -164,7 +187,6 @@ Future<void> _publishPost() async {
     );
 
     print("Post saved successfully.");
-    print("===============================");
 
     _captionController.clear();
 
@@ -181,7 +203,9 @@ Future<void> _publishPost() async {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Post published successfully!"),
+        content: Text(
+          "Post published successfully!",
+        ),
       ),
     );
   } catch (e, stackTrace) {
@@ -205,101 +229,143 @@ Future<void> _publishPost() async {
     }
   }
 }
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: const Text("Create Post"),
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Create Post"),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _captionController,
-              maxLines: 5,
-              decoration: const InputDecoration(
-                hintText: "What's on your mind?",
-                border: OutlineInputBorder(),
+          TextField(
+            controller: _captionController,
+            maxLines: 5,
+            decoration: const InputDecoration(
+              hintText: "What's on your mind?",
+              border: OutlineInputBorder(),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // IMAGE PREVIEW
+          if (_selectedImage != null && _imageBytes != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.memory(
+                _imageBytes!,
+                height: 260,
+                width: double.infinity,
+                fit: BoxFit.cover,
               ),
             ),
 
-            const SizedBox(height: 20),
+          // VIDEO PREVIEW (ANDROID)
+          if (!kIsWeb &&
+              _videoController != null &&
+              _videoController!.value.isInitialized)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: AspectRatio(
+                aspectRatio: _videoController!.value.aspectRatio,
+                child: VideoPlayer(_videoController!),
+              ),
+            ),
 
-            if (_imageBytes != null)
-              ClipRRect(
+          // VIDEO SELECTED (WEB)
+          if (kIsWeb && _selectedVideo != null)
+            Container(
+              height: 220,
+              decoration: BoxDecoration(
+                color: Colors.black12,
                 borderRadius: BorderRadius.circular(12),
-                child: Image.memory(
-                  _imageBytes!,
-                  height: 250,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.videocam,
+                      size: 70,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "Video Selected",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        _selectedVideo!.name,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-
-            if (_videoController != null &&
-                _videoController!
-                    .value
-                    .isInitialized)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(
-                  aspectRatio:
-                      _videoController!
-                          .value
-                          .aspectRatio,
-                  child: VideoPlayer(
-                    _videoController!,
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.photo),
-                    label: const Text(
-                      "Choose Image",
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: 10),
-
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _pickVideo,
-                    icon: const Icon(Icons.videocam),
-                    label: const Text(
-                      "Choose Video",
-                    ),
-                  ),
-                ),
-              ],
             ),
 
-            const SizedBox(height: 20),
+          const SizedBox(height: 20),
 
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed:
-                    _loading ? null : _publishPost,
-                child: _loading
-                    ? const CircularProgressIndicator()
-                    : const Text("Publish"),
+          Row(
+            children: [
+
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _pickImage,
+                  icon: const Icon(Icons.photo),
+                  label: const Text("Choose Image"),
+                ),
+              ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _pickVideo,
+                  icon: const Icon(Icons.videocam),
+                  label: const Text("Choose Video"),
+                ),
+              ),
+
+            ],
+          ),
+
+          const SizedBox(height: 25),
+
+          SizedBox(
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed:
+                  _loading ? null : _publishPost,
+              icon: _loading
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.publish),
+              label: Text(
+                _loading
+                    ? "Publishing..."
+                    : "Publish",
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
